@@ -45,8 +45,8 @@
             <div class="sidebar-footer">
                 <div class="user-avatar" style="background-color: #16A34A;">BC</div>
                 <div class="user-info">
-                    <div class="user-name">Phạm Hoàng Nam</div>
-                    <div class="user-sub">Bưu cục Thủ Đức (NV001)</div>
+                    <div class="user-name" th:text="${nhanVien != null ? nhanVien.hoTen : 'Phạm Hoàng Nam'}">Phạm Hoàng Nam</div>
+                    <div class="user-sub" th:text="${(currentKho != null ? currentKho.tenKho : 'Bưu cục Thủ Đức') + ' (' + (nhanVien != null ? nhanVien.maNv : 'NV001') + ')'}">Bưu cục Thủ Đức (NV001)</div>
                 </div>
             </div>
         </aside>
@@ -60,15 +60,10 @@
                     <span>Bảng điều khiển & Tiếp nhận</span>
                 </div>
                 <div class="header-actions">
-                    <form th:action="@{/post-office/dashboard}" method="get" style="display: flex; gap: 8px; align-items: center;">
-                        <label style="font-size: 13px; color: var(--text-secondary); white-space: nowrap;">Chọn bưu cục:</label>
-                        <select class="form-select form-select-sm" name="maKho" onchange="this.form.submit()" style="min-width: 180px;">
-                            <option th:each="kho : ${danhSachKho}" 
-                                    th:value="${kho.maKho}" 
-                                    th:text="${kho.maKho + ' - ' + kho.tenKho}"
-                                    th:selected="${kho.maKho == selectedMaKho}">KHO01 - Bưu cục Thủ Đức</option>
-                        </select>
-                    </form>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-size: 13px; color: var(--text-secondary); white-space: nowrap;">Bưu cục trực thuộc:</span>
+                        <span class="badge badge-primary" style="font-size: 13px; padding: 6px 12px;" th:text="${currentKho != null ? currentKho.maKho + ' - ' + currentKho.tenKho : 'KHO01 - Bưu cục Thủ Đức'}">KHO01 - Bưu cục Thủ Đức</span>
+                    </div>
                 </div>
             </header>
 
@@ -175,8 +170,8 @@
                                     </td>
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm" 
-                                                th:attr="data-madh=${order.maDh},data-phi=${order.phiVanChuyen != null ? order.phiVanChuyen : 0}"
-                                                onclick="moHopThoaiTiepNhan(this.getAttribute('data-madh'), this.getAttribute('data-phi'))">
+                                                th:attr="data-madh=${order.maDh},data-phi=${order.phiVanChuyen != null ? order.phiVanChuyen : 0},data-khoiluong=${order.khoiLuong},data-dai=${order.dai},data-rong=${order.rong},data-cao=${order.cao},data-loaihang=${order.loaiHang}"
+                                                onclick="moHopThoaiTiepNhan(this.getAttribute('data-madh'), this.getAttribute('data-phi'), this.getAttribute('data-khoiluong'), this.getAttribute('data-dai'), this.getAttribute('data-rong'), this.getAttribute('data-cao'), this.getAttribute('data-loaihang'))">
                                             Tiếp nhận đơn
                                         </button>
                                     </td>
@@ -208,12 +203,13 @@
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Khối lượng cân đo (kg) <span class="required">*</span></label>
-                            <input type="number" step="0.1" min="0.1" class="form-control" name="khoiLuong" value="1.5" required>
+                            <input type="number" step="0.1" min="0.1" class="form-control" name="khoiLuong" id="modalKhoiLuong" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Loại hàng <span class="required">*</span></label>
-                            <select class="form-select" name="loaiHang">
+                            <select class="form-select" name="loaiHang" id="modalLoaiHang">
                                 <option value="Hàng tiêu chuẩn">Hàng tiêu chuẩn</option>
+                                <option value="Điện tử">Điện tử</option>
                                 <option value="Hàng điện tử">Hàng điện tử</option>
                                 <option value="Thời trang">Thời trang</option>
                                 <option value="Tài liệu">Tài liệu</option>
@@ -223,9 +219,9 @@
                     <div class="form-group">
                         <label class="form-label">Kích thước đo được (Dài x Rộng x Cao cm)</label>
                         <div style="display: flex; gap: 8px;">
-                            <input type="number" class="form-control" name="dai" value="20" placeholder="Dài">
-                            <input type="number" class="form-control" name="rong" value="15" placeholder="Rộng">
-                            <input type="number" class="form-control" name="cao" value="10" placeholder="Cao">
+                            <input type="number" class="form-control" name="dai" id="modalDai" placeholder="Dài">
+                            <input type="number" class="form-control" name="rong" id="modalRong" placeholder="Rộng">
+                            <input type="number" class="form-control" name="cao" id="modalCao" placeholder="Cao">
                         </div>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
@@ -242,8 +238,30 @@
     </div>
 
     <script>
-        function moHopThoaiTiepNhan(maDh, phi) {
+        function moHopThoaiTiepNhan(maDh, phi, khoiLuong, dai, rong, cao, loaiHang) {
             document.getElementById('modalMaDh').value = maDh;
+            document.getElementById('modalKhoiLuong').value = (khoiLuong !== null && khoiLuong !== undefined && khoiLuong !== '') ? parseFloat(khoiLuong) : '1.5';
+            document.getElementById('modalDai').value = (dai !== null && dai !== undefined && dai !== '') ? parseFloat(dai) : '20';
+            document.getElementById('modalRong').value = (rong !== null && rong !== undefined && rong !== '') ? parseFloat(rong) : '15';
+            document.getElementById('modalCao').value = (cao !== null && cao !== undefined && cao !== '') ? parseFloat(cao) : '10';
+            if (loaiHang) {
+                var sel = document.getElementById('modalLoaiHang');
+                var found = false;
+                for (var i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === loaiHang) {
+                        sel.selectedIndex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    var opt = document.createElement('option');
+                    opt.value = loaiHang;
+                    opt.innerText = loaiHang;
+                    opt.selected = true;
+                    sel.appendChild(opt);
+                }
+            }
             var modal = document.getElementById('receiveModal');
             modal.style.display = 'flex';
             modal.style.opacity = '1';

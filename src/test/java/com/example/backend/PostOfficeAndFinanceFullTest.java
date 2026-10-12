@@ -321,9 +321,9 @@ class PostOfficeAndFinanceFullTest {
         ReceiveOrderResponse receiveResp = postOfficeService.receiveOrder(resp.getMaDh(), receiveReq);
         assertNotNull(receiveResp);
 
-        // Kiểm tra sau khi nhân viên lấy hàng: phí vận chuyển đã chuyển sang Đã thanh toán
+        // Kiểm tra sau khi nhân viên tiếp nhận: phí vận chuyển vẫn giữ Chưa thanh toán để khách hàng tự thanh toán
         var summary = paymentService.getOrderPaymentSummary(resp.getMaDh());
-        assertTrue(summary.isPhiDaThanhToan(), "Cước vận chuyển phải tự động chuyển sang Đã thanh toán sau khi nhân viên lấy hàng");
+        assertFalse(summary.isPhiDaThanhToan(), "Cước vận chuyển vẫn ở trạng thái Chưa thanh toán để khách hàng chủ động thanh toán");
     }
 
     @Autowired

@@ -1,6 +1,7 @@
 package com.example.backend.controller.view;
 
 import com.example.backend.dto.payment.CodReconciliationResponse;
+import com.example.backend.dto.payment.PaymentSummaryResponse;
 import com.example.backend.dto.payment.ProcessPaymentRequest;
 import com.example.backend.dto.postoffice.*;
 import com.example.backend.dto.report.AdminOverviewReportResponse;
@@ -40,11 +41,41 @@ public class ViewController {
     private final TrangThaiDHRepository trangThaiDHRepository;
     private final KienHangRepository kienHangRepository;
     private final KhachHangRepository khachHangRepository;
+    private final NguoiDungRepository nguoiDungRepository;
     private final ThanhToanRepository thanhToanRepository;
+    private final NhanVienRepository nhanVienRepository;
+    private final LichSuTrangThaiRepository lichSuTrangThaiRepository;
     private final PostOfficeService postOfficeService;
     private final PaymentService paymentService;
     private final AdminReportService adminReportService;
     private final DonHangService donHangService;
+
+    private KhachHang getCurrentKhachHang() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            String username = auth.getName();
+            // 1. Tìm theo SĐT
+            var khOpt = khachHangRepository.findBySdt(username);
+            if (khOpt.isPresent()) {
+                return khOpt.get();
+            }
+            // 2. Tìm theo maNd
+            khOpt = khachHangRepository.findByNguoiDung_MaNd(username);
+            if (khOpt.isPresent()) {
+                return khOpt.get();
+            }
+            // 3. Tìm theo tài khoản người dùng có tenDangNhap = username
+            var ndOpt = nguoiDungRepository.findByTenDangNhap(username);
+            if (ndOpt.isPresent()) {
+                khOpt = khachHangRepository.findByNguoiDung_MaNd(ndOpt.get().getMaNd());
+                if (khOpt.isPresent()) {
+                    return khOpt.get();
+                }
+            }
+        }
+        return khachHangRepository.findById("KH001").orElse(null);
+    }
 
     @GetMapping("/")
     public String index() {
@@ -89,18 +120,110 @@ public class ViewController {
     // =========================================================================
     @GetMapping("/customer/order-detail")
     public String customerOrderDetail(@RequestParam(required = false) String maDh, Model model) {
+        KhachHang khachHang = getCurrentKhachHang();
+        String maKh = khachHang != null ? khachHang.getMaKh() : "KH001";
+        List<DonHang> danhSachDonHang = donHangRepository.findByMaKhGuiOrderByNgayTaoDesc(maKh);
+
+        DonHang selectedOrder = null;
         if (maDh != null && !maDh.isBlank()) {
-            model.addAttribute("maDh", maDh);
+            selectedOrder = donHangRepository.findById(maDh).orElse(null);
         }
+        if (selectedOrder == null && !danhSachDonHang.isEmpty()) {
+            selectedOrder = danhSachDonHang.get(0);
+        }
+
+        List<KienHang> kienHangs = java.util.Collections.emptyList();
+        List<LichSuTrangThai> lichSu = java.util.Collections.emptyList();
+        PaymentSummaryResponse paymentSummary = null;
+
+        if (selectedOrder != null) {
+            kienHangs = kienHangRepository.findByDonHang_MaDh(selectedOrder.getMaDh());
+            lichSu = lichSuTrangThaiRepository.findByDonHang_MaDhOrderByThoiGianAsc(selectedOrder.getMaDh());
+            try {
+                paymentSummary = paymentService.getOrderPaymentSummary(selectedOrder.getMaDh());
+            } catch (Exception e) {
+                log.warn("Không thể lấy payment summary cho đơn hàng {}: {}", selectedOrder.getMaDh(), e.getMessage());
+            }
+        }
+
+        model.addAttribute("khachHang", khachHang);
+        model.addAttribute("danhSachDonHang", danhSachDonHang);
+        model.addAttribute("donHang", selectedOrder);
+        model.addAttribute("maDh", selectedOrder != null ? selectedOrder.getMaDh() : maDh);
+        model.addAttribute("kienHangs", kienHangs);
+        model.addAttribute("lichSu", lichSu);
+        model.addAttribute("paymentSummary", paymentSummary);
+
         return "customer/07-order-detail";
     }
 
     @GetMapping("/customer/payment")
-    public String customerPayment(@RequestParam(required = false) String maDh, Model model) {
+    public String customerPayment(@RequestParam(required = false) String maDh,
+                                  @RequestParam(value = "paid", required = false) Boolean paid,
+                                  Model model) {
+        KhachHang khachHang = getCurrentKhachHang();
+        String maKh = khachHang != null ? khachHang.getMaKh() : "KH001";
+        List<DonHang> danhSachDonHang = donHangRepository.findByMaKhGuiOrderByNgayTaoDesc(maKh);
+
+        DonHang selectedOrder = null;
         if (maDh != null && !maDh.isBlank()) {
-            model.addAttribute("maDh", maDh);
+            selectedOrder = donHangRepository.findById(maDh).orElse(null);
         }
+        if (selectedOrder == null && !danhSachDonHang.isEmpty()) {
+            selectedOrder = danhSachDonHang.get(0);
+        }
+
+        PaymentSummaryResponse paymentSummary = null;
+        if (selectedOrder != null) {
+            try {
+                paymentSummary = paymentService.getOrderPaymentSummary(selectedOrder.getMaDh());
+            } catch (Exception e) {
+                log.warn("Không thể lấy payment summary cho đơn hàng {}: {}", selectedOrder.getMaDh(), e.getMessage());
+            }
+        }
+
+        model.addAttribute("khachHang", khachHang);
+        model.addAttribute("danhSachDonHang", danhSachDonHang);
+        model.addAttribute("donHang", selectedOrder);
+        model.addAttribute("maDh", selectedOrder != null ? selectedOrder.getMaDh() : maDh);
+        model.addAttribute("paymentSummary", paymentSummary);
+        model.addAttribute("paid", paid);
+
         return "customer/08-payment";
+    }
+
+    @PostMapping("/customer/process-payment")
+    public String handleCustomerProcessPayment(
+            @RequestParam("maDh") String maDh,
+            @RequestParam(value = "phuongThuc", defaultValue = "Chuyển khoản") String phuongThuc,
+            @RequestParam(value = "soTien", required = false) BigDecimal soTien,
+            RedirectAttributes redirectAttributes) {
+        try {
+            DonHang donHang = donHangRepository.findById(maDh)
+                    .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Không tìm thấy đơn hàng: " + maDh));
+
+            BigDecimal amount = (donHang.getPhiVanChuyen() != null && donHang.getPhiVanChuyen().compareTo(BigDecimal.ZERO) > 0)
+                    ? donHang.getPhiVanChuyen()
+                    : ((soTien != null && soTien.compareTo(BigDecimal.ZERO) > 0) ? soTien : BigDecimal.ZERO);
+
+            ProcessPaymentRequest req = ProcessPaymentRequest.builder()
+                    .maDH(maDh)
+                    .loaiKhoan("PHI_VC")
+                    .soTien(amount)
+                    .phuongThuc(phuongThuc)
+                    .nguoiThanhToan(donHang.getTenNguoiNhan())
+                    .build();
+
+            paymentService.processPayment(req);
+            redirectAttributes.addAttribute("maDh", maDh);
+            redirectAttributes.addAttribute("paid", true);
+            return "redirect:/customer/payment";
+        } catch (Exception e) {
+            log.error("Lỗi khi khách hàng thanh toán đơn hàng {}: {}", maDh, e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            redirectAttributes.addAttribute("maDh", maDh);
+            return "redirect:/customer/payment";
+        }
     }
 
     // =========================================================================
@@ -113,8 +236,9 @@ public class ViewController {
         log.info("Hiển thị trang Tạo đơn hàng của khách hàng kết nối cơ sở dữ liệu");
         
         List<Kho> danhSachKho = khoRepository.findAll();
-        KhachHang khachHang = khachHangRepository.findById("KH001").orElse(null);
-        List<DonHang> danhSachDonHang = donHangRepository.findByMaKhGuiOrderByNgayTaoDesc("KH001");
+        KhachHang khachHang = getCurrentKhachHang();
+        String maKh = khachHang != null ? khachHang.getMaKh() : "KH001";
+        List<DonHang> danhSachDonHang = donHangRepository.findByMaKhGuiOrderByNgayTaoDesc(maKh);
 
         model.addAttribute("danhSachKho", danhSachKho);
         model.addAttribute("khachHang", khachHang);
@@ -143,7 +267,7 @@ public class ViewController {
         log.info("Xử lý tạo đơn hàng mới từ biểu mẫu web: gửi đến {}", tenNguoiNhan);
         try {
             TaoDonHangRequest req = new TaoDonHangRequest();
-            req .setTenNguoiNhan(tenNguoiNhan);
+            req.setTenNguoiNhan(tenNguoiNhan);
             req.setSdtNhan(sdtNhan);
             req.setDiaChiLay(diaChiLay);
             req.setDiaChiGiao(diaChiGiao);
@@ -160,7 +284,10 @@ public class ViewController {
             kien.setCao(new BigDecimal("10.00"));
             req.setDanhSachKien(List.of(kien));
 
-            TaoDonHangResponse res = donHangService.taoDonHang("0901000001", req);
+            KhachHang khachHang = getCurrentKhachHang();
+            String sdtGui = (khachHang != null && khachHang.getSdt() != null) ? khachHang.getSdt() : "0901000001";
+
+            TaoDonHangResponse res = donHangService.taoDonHang(sdtGui, req);
             redirectAttributes.addAttribute("success", true);
             redirectAttributes.addAttribute("maDh", res.getMaDh());
             return "redirect:/customer/create-order";
@@ -176,27 +303,37 @@ public class ViewController {
     // =========================================================================
     @GetMapping("/post-office/dashboard")
     public String postOfficeDashboard(
-            @RequestParam(value = "maKho", defaultValue = "KHO01") String maKho,
             @RequestParam(value = "receivedMaDh", required = false) String receivedMaDh,
             Model model) {
-        log.info("Tải Dashboard Bưu cục từ cơ sở dữ liệu cho kho {}", maKho);
+        // Xác định nhân viên bưu cục hiện tại (từ SecurityContext hoặc mặc định NV001)
+        String currentMaNv = "NV001";
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            String username = auth.getName();
+            var nvOpt = nhanVienRepository.findByNguoiDung_MaNd(username);
+            if (nvOpt.isPresent()) {
+                currentMaNv = nvOpt.get().getMaNv();
+            }
+        }
 
-        List<Kho> danhSachKho = khoRepository.findAll();
-        Kho currentKho = khoRepository.findById(maKho).orElse(danhSachKho.isEmpty() ? null : danhSachKho.get(0));
+        NhanVien currentNv = nhanVienRepository.findById(currentMaNv).orElse(null);
+        String maKho = (currentNv != null && currentNv.getMaKho() != null) ? currentNv.getMaKho() : "KHO01";
 
+        log.info("Tải Dashboard Bưu cục từ cơ sở dữ liệu cho nhân viên {} tại kho {}", currentMaNv, maKho);
+
+        Kho currentKho = khoRepository.findById(maKho).orElse(null);
         List<PendingOrderResponse> pendingOrders = postOfficeService.getPendingOrders(maKho);
-        List<DonHang> allOrders = donHangRepository.findAllByOrderByNgayTaoDesc();
 
-        long countPending = donHangRepository.countByTrangThai_MaTrangThai("TT01");
-        long countReceived = donHangRepository.countByTrangThai_MaTrangThai("TT02");
+        long countPending = donHangRepository.countByMaKhoGuiAndTrangThai_MaTrangThai(maKho, "TT01");
+        long countReceived = donHangRepository.countByMaKhoGuiAndTrangThai_MaTrangThai(maKho, "TT02");
         long countInTransit = donHangRepository.countByTrangThai_MaTrangThaiIn(List.of("TT03", "TT04", "TT05"));
-        long countCompleted = donHangRepository.countByTrangThai_MaTrangThai("TT06");
+        long countCompleted = donHangRepository.countByMaKhoGuiAndTrangThai_MaTrangThai(maKho, "TT06");
 
-        model.addAttribute("danhSachKho", danhSachKho);
+        model.addAttribute("nhanVien", currentNv);
         model.addAttribute("currentKho", currentKho);
         model.addAttribute("selectedMaKho", maKho);
         model.addAttribute("pendingOrders", pendingOrders);
-        model.addAttribute("allOrders", allOrders);
         model.addAttribute("countPending", countPending);
         model.addAttribute("countReceived", countReceived);
         model.addAttribute("countInTransit", countInTransit);
@@ -209,7 +346,7 @@ public class ViewController {
     @PostMapping("/post-office/receive-order")
     public String handleReceiveOrder(
             @RequestParam("maDh") String maDh,
-            @RequestParam("maKho") String maKho,
+            @RequestParam(value = "maKho", required = false) String maKho,
             @RequestParam(value = "khoiLuong", defaultValue = "1.5") BigDecimal khoiLuong,
             @RequestParam(value = "dai", defaultValue = "20.0") BigDecimal dai,
             @RequestParam(value = "rong", defaultValue = "15.0") BigDecimal rong,
@@ -218,10 +355,24 @@ public class ViewController {
             @RequestParam(value = "ghiChu", required = false) String ghiChu,
             RedirectAttributes redirectAttributes) {
 
+        // Xác định bưu cục của nhân viên
+        String currentMaNv = "NV001";
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            String username = auth.getName();
+            var nvOpt = nhanVienRepository.findByNguoiDung_MaNd(username);
+            if (nvOpt.isPresent()) {
+                currentMaNv = nvOpt.get().getMaNv();
+            }
+        }
+        NhanVien currentNv = nhanVienRepository.findById(currentMaNv).orElse(null);
+        String finalMaKho = (currentNv != null && currentNv.getMaKho() != null) ? currentNv.getMaKho() : (maKho != null ? maKho : "KHO01");
+
         try {
             ReceiveOrderRequest req = ReceiveOrderRequest.builder()
-                    .maKho(maKho)
-                    .maNV("NV001")
+                    .maKho(finalMaKho)
+                    .maNV(currentMaNv)
                     .khoiLuong(khoiLuong)
                     .dai(dai)
                     .rong(rong)
@@ -231,13 +382,11 @@ public class ViewController {
                     .build();
 
             postOfficeService.receiveOrder(maDh, req);
-            redirectAttributes.addAttribute("maKho", maKho);
             redirectAttributes.addAttribute("receivedMaDh", maDh);
             return "redirect:/post-office/dashboard";
         } catch (Exception e) {
             log.error("Lỗi khi tiếp nhận đơn hàng {}: {}", maDh, e.getMessage());
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            redirectAttributes.addAttribute("maKho", maKho);
             return "redirect:/post-office/dashboard";
         }
     }

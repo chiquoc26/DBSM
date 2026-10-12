@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -58,6 +59,9 @@ public class PostOfficeService {
 
         List<DonHang> orders = donHangRepository.findByMaKhoGuiAndTrangThai_MaTrangThai(maKho, "TT01");
         return orders.stream().map(d -> {
+            List<KienHang> kiens = kienHangRepository.findByDonHang_MaDh(d.getMaDh());
+            KienHang firstKien = kiens.isEmpty() ? null : kiens.get(0);
+
             List<ThanhToan> payments = thanhToanRepository.findByDonHang_MaDhOrderByThoiGianDesc(d.getMaDh());
             ThanhToan phiPayment = payments.stream()
                     .filter(p -> "PHI_VC".equalsIgnoreCase(p.getLoaiKhoan()))
@@ -87,6 +91,11 @@ public class PostOfficeService {
                     .phiDaThanhToan(phiDaThanhToan)
                     .tinhTrangThanhToan(tinhTrang)
                     .phuongThucThanhToan(phuongThuc)
+                    .khoiLuong(firstKien != null ? firstKien.getKhoiLuong() : new BigDecimal("1.5"))
+                    .dai(firstKien != null && firstKien.getDai() != null ? firstKien.getDai() : new BigDecimal("20.0"))
+                    .rong(firstKien != null && firstKien.getRong() != null ? firstKien.getRong() : new BigDecimal("15.0"))
+                    .cao(firstKien != null && firstKien.getCao() != null ? firstKien.getCao() : new BigDecimal("10.0"))
+                    .loaiHang(firstKien != null && firstKien.getLoaiHang() != null ? firstKien.getLoaiHang() : "Hàng tiêu chuẩn")
                     .build();
         }).toList();
     }
@@ -176,19 +185,35 @@ public class PostOfficeService {
 
         // Tự động cập nhật khoản cước vận chuyển tiền mặt sang Đã thanh toán (nhân viên
         // thu khi lấy hàng)
+        boolean daThanhToanCuoc = thanhToanRepository.existsByDonHang_MaDhAndLoaiKhoanAndTrangThaiIn(
+                donHang.getMaDh(), "PHI_VC", List.of("Đã thanh toán", "DA_THANH_TOAN"));
+
         List<ThanhToan> unpaidFees = thanhToanRepository.findByDonHang_MaDhOrderByThoiGianDesc(donHang.getMaDh())
                 .stream()
                 .filter(p -> "PHI_VC".equalsIgnoreCase(p.getLoaiKhoan())
                         && !"DA_THANH_TOAN".equalsIgnoreCase(p.getTrangThai())
                         && !"Đã thanh toán".equalsIgnoreCase(p.getTrangThai()))
                 .toList();
-        for (ThanhToan p : unpaidFees) {
-            p.setTrangThai("Đã thanh toán");
-            p.setThoiGian(LocalDateTime.now());
-            if (request.getMaNV() != null && !request.getMaNV().isBlank()) {
-                p.setNguoiThanhToan("NV " + request.getMaNV() + " (thu tiền mặt khi lấy hàng)");
+
+        if (daThanhToanCuoc) {
+            // Cước đã được thanh toán trước (chuyển khoản/online): dọn dẹp các bản ghi chưa thanh toán thừa
+            if (!unpaidFees.isEmpty()) {
+                thanhToanRepository.deleteAll(unpaidFees);
             }
-            thanhToanRepository.save(p);
+        } else {
+            // Cước chưa thanh toán: KHÔNG tự ý chuyển sang 'Đã thanh toán'.
+            // Chỉ đồng bộ số tiền khớp với cước phí thực tế của đơn hàng và giữ nguyên trạng thái 'Chưa thanh toán'
+            // để người dùng/khách hàng tự thanh toán chuyển khoản hoặc tài xế thu khi giao.
+            if (!unpaidFees.isEmpty()) {
+                ThanhToan p = unpaidFees.get(0);
+                p.setSoTien(donHang.getPhiVanChuyen() != null ? donHang.getPhiVanChuyen() : BigDecimal.ZERO);
+                // Giữ nguyên trạng thái p.getTrangThai() là 'Chưa thanh toán'
+                thanhToanRepository.save(p);
+
+                if (unpaidFees.size() > 1) {
+                    thanhToanRepository.deleteAll(unpaidFees.subList(1, unpaidFees.size()));
+                }
+            }
         }
 
         // Ghi nhận lịch sử trạng thái

@@ -60,4 +60,19 @@ public class PendingOrderResponse {
 
     @Schema(description = "Phương thức thanh toán cước", example = "Chuyển khoản")
     private String phuongThucThanhToan;
+
+    @Schema(description = "Khối lượng kiện hàng (kg)", example = "2.5")
+    private BigDecimal khoiLuong;
+
+    @Schema(description = "Chiều dài kiện hàng (cm)", example = "30")
+    private BigDecimal dai;
+
+    @Schema(description = "Chiều rộng kiện hàng (cm)", example = "20")
+    private BigDecimal rong;
+
+    @Schema(description = "Chiều cao kiện hàng (cm)", example = "15")
+    private BigDecimal cao;
+
+    @Schema(description = "Loại hàng hóa", example = "Điện tử")
+    private String loaiHang;
 }

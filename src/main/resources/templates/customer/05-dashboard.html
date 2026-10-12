@@ -33,10 +33,6 @@
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                     <span>Chi tiết đơn hàng</span>
                 </a>
-                <a th:href="@{/tracking}" href="/tracking" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <span>Theo dõi / Tra cứu</span>
-                </a>
 
                 <div class="nav-section-title">Tài chính &amp; Cá nhân</div>
                 <a th:href="@{/customer/payment}" href="/customer/payment" class="nav-item">
@@ -78,9 +74,6 @@
                         </div>
                         <h1 class="page-title">Bảng điều khiển Khách hàng</h1>
                         <p class="page-subtitle">Theo dõi danh sách đơn hàng và trạng thái vận chuyển (UC05)</p>
-                    </div>
-                    <div class="page-actions">
-                        <a th:href="@{/customer/create-order}" href="/customer/create-order" class="btn btn-primary">📦 Tạo đơn hàng ngay</a>
                     </div>
                 </div>
 
@@ -137,11 +130,17 @@
             window.location.href = '/login';
         }
 
+        // Đồng bộ token từ localStorage vào Cookie để các trang SSR nhận diện đúng tài khoản
+        if (token && !document.cookie.includes('accessToken=')) {
+            document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+        }
+
         document.getElementById('userNameDisplay').innerText = tenDangNhap;
         document.getElementById('userSubDisplay').innerText = 'SĐT: ' + tenDangNhap;
 
         function logout() {
             localStorage.clear();
+            document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
             window.location.href = '/login';
         }
 

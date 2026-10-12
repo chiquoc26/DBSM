@@ -36,10 +36,6 @@
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                     <span>Đơn hàng của tôi</span>
                 </a>
-                <a th:href="@{/tracking}" href="/tracking" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <span>Theo dõi / Tra cứu</span>
-                </a>
 
                 <div class="nav-section-title">Tài chính &amp; Cá nhân</div>
                 <a th:href="@{/customer/payment}" href="/customer/payment" class="nav-item">
@@ -53,10 +49,10 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-avatar">KH</div>
+                <div class="user-avatar" id="userAvatar">KH</div>
                 <div class="user-info">
-                    <div class="user-name">Nguyễn Văn An</div>
-                    <div class="user-sub">Tài khoản Khách hàng</div>
+                    <div class="user-name" id="userNameDisplay" th:text="${khachHang != null ? khachHang.hoTen : 'Nguyễn Văn An'}">Nguyễn Văn An</div>
+                    <div class="user-sub" id="userSubDisplay" th:text="${khachHang != null ? 'SĐT: ' + khachHang.sdt : 'Tài khoản Khách hàng'}">Tài khoản Khách hàng</div>
                 </div>
             </div>
         </aside>
@@ -68,159 +64,211 @@
                     <span>/</span>
                     <span>Chi tiết đơn hàng</span>
                     <span>/</span>
-                    <strong th:text="${maDh != null ? maDh : 'DH000101'}">DH000101</strong>
+                    <strong th:text="${donHang != null ? donHang.maDh : (maDh != null ? maDh : 'Chưa có đơn')}">DH000001</strong>
                 </div>
-                <div class="header-actions">
-                    <a th:href="@{/customer/payment}" href="/customer/payment" class="btn btn-outline-primary btn-sm">💳 Thanh toán cước</a>
-                    <button class="btn btn-primary btn-sm" onclick="confirmReceived()">✓ Xác nhận đã nhận hàng</button>
+                <div class="header-actions" style="display: flex; gap: 10px; align-items: center;">
+                    <!-- Dropdown chọn đơn hàng của tài khoản khách -->
+                    <div th:if="${danhSachDonHang != null and !danhSachDonHang.isEmpty()}" style="display: flex; gap: 6px; align-items: center;">
+                        <label style="font-size: 13px; color: var(--text-secondary); white-space: nowrap;">Chọn đơn:</label>
+                        <select class="form-select form-select-sm" onchange="window.location.href='/customer/order-detail?maDh=' + this.value" style="min-width: 170px;">
+                            <option th:each="dh : ${danhSachDonHang}" 
+                                    th:value="${dh.maDh}" 
+                                    th:text="${dh.maDh + ' (' + (dh.trangThai != null ? dh.trangThai.tenTrangThai : '') + ')'}"
+                                    th:selected="${donHang != null and dh.maDh == donHang.maDh}">DH000001</option>
+                        </select>
+                    </div>
+
+                    <a th:if="${donHang != null}" th:href="@{/customer/payment(maDh=${donHang.maDh})}" class="btn btn-outline-primary btn-sm">Thanh toán cước</a>
+                    <button class="btn btn-primary btn-sm" onclick="confirmReceived()">Xác nhận đã nhận hàng</button>
                 </div>
             </header>
 
             <div class="page-container">
-                <div class="page-header">
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <h1 class="page-title" th:text="${'Chi tiết đơn hàng ' + (maDh != null ? maDh : 'DH000101')}">Chi tiết đơn hàng DH000101</h1>
-                            <span id="orderStatusBadge"><span class="badge badge-info"><span class="badge-dot"></span>Đang vận chuyển</span></span>
-                        </div>
-                        <p class="page-subtitle">Ngày khởi tạo: 22/09/2026 08:30 • Hình thức: Giao hàng chuẩn</p>
-                    </div>
-                    <div class="page-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨 In vận đơn</button>
-                    </div>
+                <!-- Thông báo nếu chưa có đơn hàng nào -->
+                <div th:if="${donHang == null}" class="card" style="padding: 30px; text-align: center; color: var(--text-muted);">
+                    <p style="font-size: 16px; margin-bottom: 12px;">Bạn chưa có đơn hàng nào hoặc mã đơn hàng không tồn tại.</p>
+                    <a th:href="@{/customer/create-order}" class="btn btn-primary btn-sm">+ Tạo đơn hàng mới</a>
                 </div>
 
-                <div class="grid-12">
-                    <!-- Left Column: Thông tin giao nhận & kiện -->
-                    <div class="col-8">
-                        <!-- Thông tin người gửi & người nhận -->
-                        <div class="card" style="margin-bottom: 20px;">
-                            <div class="card-header">
-                                <h3 class="card-title">Thông tin tuyến và địa chỉ giao nhận</h3>
+                <div th:if="${donHang != null}">
+                    <div class="page-header">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <h1 class="page-title" th:text="${'Chi tiết đơn hàng ' + donHang.maDh}">Chi tiết đơn hàng DH000001</h1>
+                                <span id="orderStatusBadge">
+                                    <span class="badge badge-info">
+                                        <span class="badge-dot"></span>
+                                        <span th:text="${donHang.trangThai != null ? donHang.trangThai.tenTrangThai : 'Mới tạo'}">Mới tạo</span>
+                                    </span>
+                                </span>
                             </div>
-                            <div class="card-body">
-                                <div class="grid-2">
-                                    <div style="padding: 14px; background: var(--bg-alt); border-radius: var(--radius-md);">
-                                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Người gửi / Điểm lấy</div>
-                                        <div style="font-size: 15px; font-weight: 700; margin: 4px 0;">Nguyễn Văn An</div>
-                                        <div style="font-size: 13px; color: var(--text-secondary);">SĐT: 0912 345 678</div>
-                                        <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Địa chỉ: Số 1 Võ Văn Ngân, P. Linh Chiểu, TP. Thủ Đức, TP.HCM</div>
-                                    </div>
-                                    <div style="padding: 14px; background: var(--bg-alt); border-radius: var(--radius-md);">
-                                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Người nhận / Điểm giao</div>
-                                        <div style="font-size: 15px; font-weight: 700; margin: 4px 0;">Trần Thị Bích</div>
-                                        <div style="font-size: 13px; color: var(--text-secondary);">SĐT: 0987 654 321</div>
-                                        <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Địa chỉ: 48 Lê Lợi, P. Bến Nghé, Quận 1, TP.HCM</div>
-                                    </div>
-                                </div>
-                            </div>
+                            <p class="page-subtitle">
+                                Ngày khởi tạo: <span th:text="${#temporals.format(donHang.ngayTao, 'dd/MM/yyyy HH:mm')}">22/09/2026 08:30</span>
+                                • Tuyến gửi: <strong th:text="${donHang.maKhoGui}">KHO01</strong> &rarr; <strong th:text="${donHang.maKhoNhan}">KHO02</strong>
+                            </p>
                         </div>
-
-                        <!-- Thông tin kiện hàng -->
-                        <div class="card" style="margin-bottom: 20px;">
-                            <div class="card-header">
-                                <h3 class="card-title">Thông tin kiện hàng</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="grid-4" style="margin-bottom: 16px;">
-                                    <div>
-                                        <span style="font-size: 12px; color: var(--text-muted);">Mã kiện</span>
-                                        <div style="font-weight: 700; color: var(--primary-blue); margin-top: 2px;">KIEN000101</div>
-                                    </div>
-                                    <div>
-                                        <span style="font-size: 12px; color: var(--text-muted);">Khối lượng</span>
-                                        <div style="font-weight: 600; margin-top: 2px;">2.5 kg</div>
-                                    </div>
-                                    <div>
-                                        <span style="font-size: 12px; color: var(--text-muted);">Kích thước (DxRxC)</span>
-                                        <div style="font-weight: 600; margin-top: 2px;">20 x 15 x 10 cm</div>
-                                    </div>
-                                    <div>
-                                        <span style="font-size: 12px; color: var(--text-muted);">Vị trí kho hiện tại</span>
-                                        <div style="font-weight: 600; color: var(--info); margin-top: 2px;">Bưu cục Quận 1</div>
-                                    </div>
-                                </div>
-                                <div style="font-size: 13px; color: var(--text-secondary);">
-                                    <strong>Loại hàng hóa:</strong> Thiết bị điện tử - <strong>Ghi chú:</strong> Hàng dễ vỡ, xin nhẹ tay.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Lịch sử trạng thái & Timeline -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Lịch sử trạng thái vận đơn (Audit Trail)</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="timeline">
-                                    <div class="timeline-item completed">
-                                        <div class="timeline-point"></div>
-                                        <div class="timeline-time">22/09/2026 08:30 • Người cập nhật: Khách hàng (Nguyễn Văn An)</div>
-                                        <div class="timeline-title">Khởi tạo đơn hàng [Mới tạo]</div>
-                                        <div class="timeline-desc">Ghi nhận thông tin đơn hàng mới trên cổng trực tuyến.</div>
-                                    </div>
-                                    <div class="timeline-item completed">
-                                        <div class="timeline-point"></div>
-                                        <div class="timeline-time">22/09/2026 09:15 • Người cập nhật: NV Bưu cục (Lê Văn Bình - NV0001)</div>
-                                        <div class="timeline-title">Tiếp nhận kiện hàng [Đã tiếp nhận]</div>
-                                        <div class="timeline-desc">Cân đo khối lượng chuẩn 2.5kg, đóng kiện KIEN000101 tại Kho Hub Thủ Đức.</div>
-                                    </div>
-                                    <div class="timeline-item active">
-                                        <div class="timeline-point"></div>
-                                        <div class="timeline-time">22/09/2026 10:45 • Người cập nhật: NV Điều phối (Trần Minh Tuấn)</div>
-                                        <div class="timeline-title">Điều phối lên xe tải [Đang vận chuyển]</div>
-                                        <div class="timeline-desc">Gán vào chuyến CG00012 tuyến Thủ Đức - Q1, Tài xế Trần Văn Dũng (Xe 51C-987.65).</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="page-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="window.print()">In vận đơn</button>
                         </div>
                     </div>
 
-                    <!-- Right Column: Thanh toán & Thao tác -->
-                    <div class="col-4">
-                        <div class="card" style="margin-bottom: 20px;">
-                            <div class="card-header" style="background-color: var(--bg-alt);">
-                                <h3 class="card-title">Cước phí &amp; Tiền thu</h3>
+                    <div class="grid-12">
+                        <!-- Left Column: Thông tin giao nhận & kiện -->
+                        <div class="col-8">
+                            <!-- Thông tin người gửi & người nhận -->
+                            <div class="card" style="margin-bottom: 20px;">
+                                <div class="card-header">
+                                    <h3 class="card-title">Thông tin tuyến và địa chỉ giao nhận</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="grid-2">
+                                        <div style="padding: 14px; background: var(--bg-alt); border-radius: var(--radius-md);">
+                                            <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Người gửi / Điểm lấy</div>
+                                            <div style="font-size: 15px; font-weight: 700; margin: 4px 0;" th:text="${khachHang != null ? khachHang.hoTen : 'Nguyễn Văn An'}">Nguyễn Văn An</div>
+                                            <div style="font-size: 13px; color: var(--text-secondary);" th:text="${'SĐT: ' + (khachHang != null ? khachHang.sdt : '0901000001')}">SĐT: 0901000001</div>
+                                            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;" th:text="${'Địa chỉ: ' + (donHang.diaChiLay != null ? donHang.diaChiLay : '---')}">Địa chỉ lấy</div>
+                                        </div>
+                                        <div style="padding: 14px; background: var(--bg-alt); border-radius: var(--radius-md);">
+                                            <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Người nhận / Điểm giao</div>
+                                            <div style="font-size: 15px; font-weight: 700; margin: 4px 0;" th:text="${donHang.tenNguoiNhan}">Trần Thị Bích</div>
+                                            <div style="font-size: 13px; color: var(--text-secondary);" th:text="${'SĐT: ' + donHang.sdtNhan}">SĐT: 0987 654 321</div>
+                                            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;" th:text="${'Địa chỉ: ' + donHang.diaChiGiao}">Địa chỉ giao</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13.5px;">
-                                    <span style="color: var(--text-secondary);">Phí vận chuyển:</span>
-                                    <span>35,000 đ</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13.5px;">
-                                    <span style="color: var(--text-secondary);">Tiền thu hộ (COD):</span>
-                                    <span>550,000 đ</span>
-                                </div>
-                                <hr style="border: none; border-top: 1px dashed var(--border-color); margin: 12px 0;">
-                                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
-                                    <span style="font-weight: 600;">Tổng tiền thu:</span>
-                                    <strong style="color: var(--primary-blue); font-size: 20px;">585,000 đ</strong>
-                                </div>
 
-                                <div style="background: var(--bg-alt); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 12.5px;">
-                                    <div>Phương thức: <strong>Chuyển khoản</strong></div>
-                                    <div style="margin-top: 4px;">Trạng thái TT: <span class="badge badge-success" style="font-size: 11px;">Đã thanh toán</span></div>
+                            <!-- Thông tin kiện hàng -->
+                            <div class="card" style="margin-bottom: 20px;">
+                                <div class="card-header">
+                                    <h3 class="card-title">Thông tin kiện hàng</h3>
                                 </div>
+                                <div class="card-body">
+                                    <div th:if="${kienHangs != null and !kienHangs.isEmpty()}">
+                                        <div th:each="kien : ${kienHangs}" style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                                            <div class="grid-4" style="margin-bottom: 8px;">
+                                                <div>
+                                                    <span style="font-size: 12px; color: var(--text-muted);">Mã kiện</span>
+                                                    <div style="font-weight: 700; color: var(--primary-blue); margin-top: 2px;" th:text="${kien.maKien}">KIEN000001</div>
+                                                </div>
+                                                <div>
+                                                    <span style="font-size: 12px; color: var(--text-muted);">Khối lượng</span>
+                                                    <div style="font-weight: 600; margin-top: 2px;" th:text="${kien.khoiLuong + ' kg'}">1.5 kg</div>
+                                                </div>
+                                                <div>
+                                                    <span style="font-size: 12px; color: var(--text-muted);">Kích thước (DxRxC)</span>
+                                                    <div style="font-weight: 600; margin-top: 2px;" th:text="${kien.kichThuoc + ' cm'}">20 x 15 x 10 cm</div>
+                                                </div>
+                                                <div>
+                                                    <span style="font-size: 12px; color: var(--text-muted);">Vị trí kho hiện tại</span>
+                                                    <div style="font-weight: 600; color: var(--info); margin-top: 2px;" th:text="${kien.khoHienTai != null ? kien.khoHienTai.tenKho : 'Đang xử lý tại bưu cục'}">Bưu cục Thủ Đức</div>
+                                                </div>
+                                            </div>
+                                            <div style="font-size: 13px; color: var(--text-secondary);">
+                                                <strong>Loại hàng hóa:</strong> <span th:text="${kien.loaiHang != null ? kien.loaiHang : 'Hàng tiêu chuẩn'}">Hàng tiêu chuẩn</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div th:if="${kienHangs == null or kienHangs.isEmpty()}" style="font-size: 13.5px; color: var(--text-secondary);">
+                                        Đơn hàng hiện chưa có kiện hàng chi tiết hoặc đang chờ bưu cục cân đo tiếp nhận.
+                                    </div>
+                                </div>
+                            </div>
 
-                                <a th:href="@{/customer/payment}" href="/customer/payment" class="btn btn-outline-primary btn-block">Xem trang thanh toán</a>
-                                <button class="btn btn-primary btn-block" style="margin-top: 8px;" onclick="confirmReceived()">Xác nhận đã nhận hàng</button>
+                            <!-- Lịch sử trạng thái & Timeline -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Lịch sử trạng thái vận đơn (Audit Trail)</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="timeline" th:if="${lichSu != null and !lichSu.isEmpty()}">
+                                        <div th:each="ls, iter : ${lichSu}" class="timeline-item" th:classappend="${iter.last ? 'active' : 'completed'}">
+                                            <div class="timeline-point"></div>
+                                            <div class="timeline-time" th:text="${#temporals.format(ls.thoiGian, 'dd/MM/yyyy HH:mm') + (ls.maNd != null ? ' • Người cập nhật: ' + ls.maNd : '')}">22/09/2026 08:30</div>
+                                            <div class="timeline-title" th:text="${(ls.trangThai != null ? ls.trangThai.tenTrangThai : '') + (ls.trangThai != null ? ' [' + ls.trangThai.maTrangThai + ']' : '')}">Khởi tạo đơn hàng</div>
+                                            <div class="timeline-desc" th:text="${ls.ghiChu != null and !ls.ghiChu.isEmpty() ? ls.ghiChu : 'Ghi nhận trạng thái ' + (ls.trangThai != null ? ls.trangThai.tenTrangThai : '')}">Chi tiết</div>
+                                        </div>
+                                    </div>
+                                    <div class="timeline" th:if="${lichSu == null or lichSu.isEmpty()}">
+                                        <div class="timeline-item active">
+                                            <div class="timeline-point"></div>
+                                            <div class="timeline-time" th:text="${#temporals.format(donHang.ngayTao, 'dd/MM/yyyy HH:mm')}">22/09/2026 08:30</div>
+                                            <div class="timeline-title" th:text="${(donHang.trangThai != null ? donHang.trangThai.tenTrangThai : 'Mới tạo') + ' [TT01]'}">Mới tạo đơn hàng</div>
+                                            <div class="timeline-desc">Đơn hàng được khởi tạo thành công trên hệ thống và đang chờ tiếp nhận.</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Hỗ trợ -->
-                        <div class="card" style="padding: 18px; text-align: center;">
-                            <div style="font-size: 28px; margin-bottom: 6px;">📞</div>
-                            <h4 style="font-size: 14px; margin-bottom: 4px;">Cần khiếu nại hoặc hỗ trợ?</h4>
-                            <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 12px;">Đội ngũ hỗ trợ UTE Express sẵn sàng 24/7</p>
-                            <a href="tel:19001234" class="btn btn-secondary btn-sm btn-block">Gọi 1900 1234</a>
+                        <!-- Right Column: Thanh toán & Thao tác -->
+                        <div class="col-4">
+                            <div class="card" style="margin-bottom: 20px;">
+                                <div class="card-header" style="background-color: var(--bg-alt);">
+                                    <h3 class="card-title">Cước phí &amp; Tiền thu</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13.5px;">
+                                        <span style="color: var(--text-secondary);">Phí vận chuyển:</span>
+                                        <span th:text="${donHang.phiVanChuyen != null ? #numbers.formatDecimal(donHang.phiVanChuyen, 1, 'COMMA', 0, 'POINT') + ' đ' : '0 đ'}">35,000 đ</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13.5px;">
+                                        <span style="color: var(--text-secondary);">Tiền thu hộ (COD):</span>
+                                        <span th:text="${donHang.cod != null ? #numbers.formatDecimal(donHang.cod, 1, 'COMMA', 0, 'POINT') + ' đ' : '0 đ'}">0 đ</span>
+                                    </div>
+                                    <hr style="border: none; border-top: 1px dashed var(--border-color); margin: 12px 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
+                                        <span style="font-weight: 600;">Tổng tiền thu:</span>
+                                        <strong style="color: var(--primary-blue); font-size: 20px;" 
+                                                th:text="${paymentSummary != null ? #numbers.formatDecimal(paymentSummary.tongSoTienCanThu, 1, 'COMMA', 0, 'POINT') + ' đ' : #numbers.formatDecimal(donHang.phiVanChuyen.add(donHang.cod), 1, 'COMMA', 0, 'POINT') + ' đ'}">35,000 đ</strong>
+                                    </div>
+
+                                    <div style="background: var(--bg-alt); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 12.5px;">
+                                        <div>Phương thức: <strong>Chuyển khoản / COD</strong></div>
+                                        <div style="margin-top: 4px;">Trạng thái TT: 
+                                            <span class="badge" 
+                                                  th:classappend="${paymentSummary != null and (paymentSummary.phiDaThanhToan or paymentSummary.tinhTrangThanhToan == 'Đã thanh toán đủ') ? 'badge-success' : 'badge-yellow'}"
+                                                  style="font-size: 11px;"
+                                                  th:text="${paymentSummary != null ? paymentSummary.tinhTrangThanhToan : 'Chưa thanh toán'}">Chưa thanh toán</span>
+                                        </div>
+                                    </div>
+
+                                    <a th:href="@{/customer/payment(maDh=${donHang.maDh})}" class="btn btn-outline-primary btn-block">Xem trang thanh toán</a>
+                                    <button class="btn btn-primary btn-block" style="margin-top: 8px;" onclick="confirmReceived()">Xác nhận đã nhận hàng</button>
+                                </div>
+                            </div>
+
+                            <!-- Hỗ trợ -->
+                            <div class="card" style="padding: 18px; text-align: center;">
+                                <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+                                    <svg style="width: 26px; height: 26px; color: var(--primary-blue);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                </div>
+                                <h4 style="font-size: 14px; margin-bottom: 4px;">Cần khiếu nại hoặc hỗ trợ?</h4>
+                                <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 12px;">Đội ngũ hỗ trợ UTE Express sẵn sàng 24/7</p>
+                                <a href="tel:19001234" class="btn btn-secondary btn-sm btn-block">Gọi 1900 1234</a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
         </main>
     </div>
 
     <script>
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+            alert('Bạn chưa đăng nhập! Vui lòng đăng nhập tài khoản Khách hàng.');
+            window.location.href = '/login';
+        } else if (!document.cookie.includes('accessToken=')) {
+            document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+            window.location.reload();
+        }
+
+        function logout() {
+            localStorage.clear();
+            document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
+            window.location.href = '/login';
+        }
+
         function confirmReceived() {
             if (confirm('Bạn xác nhận kiện hàng đã được giao tận tay đầy đủ và nguyên vẹn?')) {
                 document.getElementById('orderStatusBadge').innerHTML = '<span class="badge badge-success"><span class="badge-dot"></span>Giao thành công</span>';

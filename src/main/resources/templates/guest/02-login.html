@@ -110,9 +110,14 @@
                     localStorage.setItem('tenDangNhap', resData.data.tenDangNhap);
                     localStorage.setItem('vaiTro', resData.data.vaiTro);
 
+                    // Lưu vào Cookie để trình duyệt tự động gửi token khi chuyển trang SSR Thymeleaf
+                    document.cookie = `accessToken=${resData.data.accessToken}; path=/; max-age=86400; SameSite=Lax`;
+
                     setTimeout(() => {
                         if (resData.data.vaiTro === 'ADMIN') {
                             window.location.href = '/admin/users';
+                        } else if (resData.data.vaiTro === 'NVBC' || resData.data.vaiTro === 'NHAN_VIEN_BUU_CUC') {
+                            window.location.href = '/post-office/dashboard';
                         } else {
                             window.location.href = '/customer/dashboard';
                         }

@@ -152,11 +152,18 @@ public class PaymentService {
         String maTTToan = "GD" + String.format("%06d", (int) (System.currentTimeMillis() % 1000000));
         String phuongThucChuan = normalizePhuongThuc(request.getPhuongThuc());
 
+        BigDecimal soTienChuan = request.getSoTien();
+        if ("PHI_VC".equalsIgnoreCase(loaiKhoan) && donHang.getPhiVanChuyen() != null) {
+            soTienChuan = donHang.getPhiVanChuyen();
+        } else if ("COD".equalsIgnoreCase(loaiKhoan) && donHang.getCod() != null) {
+            soTienChuan = donHang.getCod();
+        }
+
         ThanhToan thanhToan = ThanhToan.builder()
                 .maTtToan(maTTToan)
                 .donHang(donHang)
                 .loaiKhoan(loaiKhoan)
-                .soTien(request.getSoTien())
+                .soTien(soTienChuan)
                 .phuongThuc(phuongThucChuan)
                 .trangThai("Đã thanh toán")
                 .thoiGian(LocalDateTime.now())

@@ -33,10 +33,6 @@
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                     <span>Chi tiết đơn hàng</span>
                 </a>
-                <a th:href="@{/tracking}" href="/tracking" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <span>Theo dõi / Tra cứu</span>
-                </a>
 
                 <div class="nav-section-title">Tài chính &amp; Cá nhân</div>
                 <a th:href="@{/customer/payment}" href="/customer/payment" class="nav-item">
@@ -80,7 +76,7 @@
                                 <div class="card-body">
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label class="form-label">Địa chỉ lấy hàng chi tiết <span style="color: red;">*</span></label>
-                                        <input type="text" class="form-control" id="senderAddress" value="12 Võ Văn Ngân, Thủ Đức, TP.HCM" required>
+                                        <input type="text" class="form-control" id="senderAddress" placeholder="Ví dụ: 12 Võ Văn Ngân, Thủ Đức, TP.HCM" required>
                                     </div>
                                 </div>
                             </div>
@@ -94,16 +90,16 @@
                                     <div class="grid-2">
                                         <div class="form-group">
                                             <label class="form-label">Họ tên người nhận <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" id="receiverName" value="Trần Thị Bích" required>
+                                            <input type="text" class="form-control" id="receiverName" placeholder="Họ và tên người nhận" required>
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Số điện thoại người nhận <span style="color: red;">*</span></label>
-                                            <input type="tel" class="form-control" id="receiverPhone" value="0901000002" pattern="[0-9]{10}" required>
+                                            <input type="tel" class="form-control" id="receiverPhone" placeholder="Số điện thoại (10 chữ số)" pattern="[0-9]{10}" required>
                                         </div>
                                     </div>
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label class="form-label">Địa chỉ giao hàng chi tiết <span style="color: red;">*</span></label>
-                                        <input type="text" class="form-control" id="receiverAddress" value="34 Lê Lợi, Q1, TP.HCM" required>
+                                        <input type="text" class="form-control" id="receiverAddress" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành" required>
                                     </div>
                                 </div>
                             </div>
@@ -138,20 +134,20 @@
                                     <div class="grid-2">
                                         <div class="form-group">
                                             <label class="form-label">Khối lượng (kg) <span style="color: red;">*</span></label>
-                                            <input type="number" step="0.1" min="0.1" class="form-control" id="pkgWeight" value="2.5" required>
+                                            <input type="number" step="0.1" min="0.1" class="form-control" id="pkgWeight" placeholder="Ví dụ: 1.5" required>
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Loại hàng hóa <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" id="pkgType" value="Điện tử" required>
+                                            <input type="text" class="form-control" id="pkgType" placeholder="Ví dụ: Quần áo, tài liệu, điện tử..." required>
                                         </div>
                                     </div>
 
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label class="form-label">Kích thước (Dài x Rộng x Cao cm)</label>
+                                        <label class="form-label">Kích thước (Dài x Rộng x Cao cm) <span style="color: red;">*</span></label>
                                         <div style="display: flex; gap: 8px;">
-                                            <input type="number" class="form-control" id="pkgLength" placeholder="Dài (cm)" value="30">
-                                            <input type="number" class="form-control" id="pkgWidth" placeholder="Rộng (cm)" value="20">
-                                            <input type="number" class="form-control" id="pkgHeight" placeholder="Cao (cm)" value="15">
+                                            <input type="number" step="1" min="1" class="form-control" id="pkgLength" placeholder="Dài (cm)" required>
+                                            <input type="number" step="1" min="1" class="form-control" id="pkgWidth" placeholder="Rộng (cm)" required>
+                                            <input type="number" step="1" min="1" class="form-control" id="pkgHeight" placeholder="Cao (cm)" required>
                                         </div>
                                     </div>
                                 </div>
@@ -167,7 +163,7 @@
                                 <div class="card-body">
                                     <div class="form-group">
                                         <label class="form-label">Tiền thu hộ COD (đ)</label>
-                                        <input type="number" step="1000" class="form-control" id="codAmount" value="500000">
+                                        <input type="number" step="1000" min="0" class="form-control" id="codAmount" placeholder="0 nếu không thu hộ" value="0">
                                     </div>
 
                                     <button type="submit" id="btnSubmit" class="btn btn-primary btn-block btn-lg" style="margin-top: 20px;">
@@ -191,10 +187,14 @@
         if (!token) {
             alert('Bạn chưa đăng nhập! Vui lòng đăng nhập tài khoản Khách hàng.');
             window.location.href = '/login';
+        } else if (!document.cookie.includes('accessToken=')) {
+            document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+            window.location.reload();
         }
 
         function logout() {
             localStorage.clear();
+            document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
             window.location.href = '/login';
         }
 
@@ -207,6 +207,19 @@
             btn.disabled = true;
             btn.innerText = 'Đang khởi tạo đơn hàng...';
 
+            const pkgWeightVal = parseFloat(document.getElementById('pkgWeight').value);
+            const pkgLengthVal = parseFloat(document.getElementById('pkgLength').value);
+            const pkgWidthVal = parseFloat(document.getElementById('pkgWidth').value);
+            const pkgHeightVal = parseFloat(document.getElementById('pkgHeight').value);
+
+            if (isNaN(pkgWeightVal) || pkgWeightVal <= 0) {
+                alertBox.style.display = 'block';
+                alertBox.innerText = 'Vui lòng nhập khối lượng kiện hàng hợp lệ (kg lớn hơn 0)!';
+                btn.disabled = false;
+                btn.innerText = 'Tạo đơn hàng mới';
+                return;
+            }
+
             const requestData = {
                 tenNguoiNhan: document.getElementById('receiverName').value.trim(),
                 sdtNhan: document.getElementById('receiverPhone').value.trim(),
@@ -217,11 +230,11 @@
                 cod: parseFloat(document.getElementById('codAmount').value) || 0,
                 danhSachKien: [
                     {
-                        khoiLuong: parseFloat(document.getElementById('pkgWeight').value) || 1,
-                        dai: parseFloat(document.getElementById('pkgLength').value) || 10,
-                        rong: parseFloat(document.getElementById('pkgWidth').value) || 10,
-                        cao: parseFloat(document.getElementById('pkgHeight').value) || 10,
-                        loaiHang: document.getElementById('pkgType').value || 'Tiêu chuẩn'
+                        khoiLuong: pkgWeightVal,
+                        dai: !isNaN(pkgLengthVal) && pkgLengthVal > 0 ? pkgLengthVal : 10,
+                        rong: !isNaN(pkgWidthVal) && pkgWidthVal > 0 ? pkgWidthVal : 10,
+                        cao: !isNaN(pkgHeightVal) && pkgHeightVal > 0 ? pkgHeightVal : 10,
+                        loaiHang: document.getElementById('pkgType').value.trim() || 'Hàng tiêu chuẩn'
                     }
                 ]
             };
@@ -239,7 +252,7 @@
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    alert(`🎉 Tạo đơn hàng thành công! Mã vận đơn: ${data.data}`);
+                    alert(`Tạo đơn hàng thành công! Mã vận đơn: ${data.data}`);
                     window.location.href = '/customer/dashboard';
                 } else {
                     alertBox.style.display = 'block';
