@@ -71,8 +71,8 @@ public class PostOfficeService {
             boolean phiDaThanhToan = phiPayment != null &&
                     ("Đã thanh toán".equalsIgnoreCase(phiPayment.getTrangThai())
                             || "DA_THANH_TOAN".equalsIgnoreCase(phiPayment.getTrangThai()));
-            String phuongThuc = phiPayment != null ? phiPayment.getPhuongThuc() : "Tiền mặt";
-            String tinhTrang = phiDaThanhToan ? "Đã thanh toán" : "Chưa thanh toán (Thu tiền mặt khi lấy hàng)";
+            String phuongThuc = phiPayment != null ? phiPayment.getPhuongThuc() : "Chuyển khoản";
+            String tinhTrang = phiDaThanhToan ? "Đã thanh toán" : "Chưa thanh toán";
 
             return PendingOrderResponse.builder()
                     .maDh(d.getMaDh())

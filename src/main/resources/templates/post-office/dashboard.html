@@ -169,11 +169,14 @@
                                               th:text="${order.tinhTrangThanhToan}">Đã thanh toán</span>
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-primary btn-sm" 
+                                        <button th:if="${order.phiDaThanhToan}" type="button" class="btn btn-primary btn-sm" 
                                                 th:attr="data-madh=${order.maDh},data-phi=${order.phiVanChuyen != null ? order.phiVanChuyen : 0},data-khoiluong=${order.khoiLuong},data-dai=${order.dai},data-rong=${order.rong},data-cao=${order.cao},data-loaihang=${order.loaiHang}"
                                                 onclick="moHopThoaiTiepNhan(this.getAttribute('data-madh'), this.getAttribute('data-phi'), this.getAttribute('data-khoiluong'), this.getAttribute('data-dai'), this.getAttribute('data-rong'), this.getAttribute('data-cao'), this.getAttribute('data-loaihang'))">
                                             Tiếp nhận đơn
                                         </button>
+                                        <span th:if="${!order.phiDaThanhToan}" class="badge" style="background: var(--bg-alt); color: var(--text-muted); font-size: 11.5px; border: 1px solid var(--border-color); padding: 5px 8px;">
+                                            Chờ thanh toán cước
+                                        </span>
                                     </td>
                                 </tr>
                             </tbody>

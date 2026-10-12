@@ -79,7 +79,6 @@
                     </div>
 
                     <a th:if="${donHang != null}" th:href="@{/customer/payment(maDh=${donHang.maDh})}" class="btn btn-outline-primary btn-sm">Thanh toán cước</a>
-                    <button class="btn btn-primary btn-sm" onclick="confirmReceived()">Xác nhận đã nhận hàng</button>
                 </div>
             </header>
 
@@ -234,7 +233,10 @@
                                     </div>
 
                                     <a th:href="@{/customer/payment(maDh=${donHang.maDh})}" class="btn btn-outline-primary btn-block">Xem trang thanh toán</a>
-                                    <button class="btn btn-primary btn-block" style="margin-top: 8px;" onclick="confirmReceived()">Xác nhận đã nhận hàng</button>
+                                    <button th:if="${donHang.trangThai != null and (donHang.trangThai.maTrangThai == 'TT06' or donHang.trangThai.tenTrangThai == 'Giao thành công')}" 
+                                            class="btn btn-primary btn-block" style="margin-top: 8px;" onclick="confirmReceived()">
+                                        Xác nhận đã nhận hàng
+                                    </button>
                                 </div>
                             </div>
 
