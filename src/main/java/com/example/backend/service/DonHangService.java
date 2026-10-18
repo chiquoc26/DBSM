@@ -71,10 +71,10 @@ public class DonHangService {
         }
         jsonBuilder.append("]");
 
-        // Gọi SP sp_tao_don_hang với cast ?::jsonb
+        // Gọi SP sp_tao_don_hang
         org.hibernate.Session session = entityManager.unwrap(org.hibernate.Session.class);
         String maDh = session.doReturningWork(connection -> {
-            try (java.sql.CallableStatement cs = connection.prepareCall("CALL sp_tao_don_hang(?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?)")) {
+            try (java.sql.CallableStatement cs = connection.prepareCall("{call sp_tao_don_hang(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}")) {
                 cs.setString(1, kh.getMaKh());
                 cs.setString(2, request.getTenNguoiNhan());
                 cs.setString(3, request.getSdtNhan());

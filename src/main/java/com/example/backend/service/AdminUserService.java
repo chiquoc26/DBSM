@@ -54,7 +54,7 @@ public class AdminUserService {
         validateInternalRequest(request);
 
         // Sinh mã người dùng từ sequence seq_nd
-        String maNd = (String) entityManager.createNativeQuery("SELECT 'ND' || lpad(nextval('seq_nd')::text, 6, '0')").getSingleResult();
+        String maNd = (String) entityManager.createNativeQuery("SELECT 'ND' + RIGHT('000000' + CAST(NEXT VALUE FOR seq_nd AS VARCHAR(10)), 6)").getSingleResult();
 
         // Tạo NguoiDung
         VaiTro vaiTro = entityManager.getReference(VaiTro.class, request.getMaVaiTro());
@@ -70,7 +70,7 @@ public class AdminUserService {
         // Tạo hồ sơ tương ứng
         switch (request.getMaVaiTro()) {
             case "NVBC" -> {
-                String maNv = (String) entityManager.createNativeQuery("SELECT 'NV' || lpad(nextval('seq_nv')::text, 5, '0')").getSingleResult();
+                String maNv = (String) entityManager.createNativeQuery("SELECT 'NV' + RIGHT('00000' + CAST(NEXT VALUE FOR seq_nv AS VARCHAR(10)), 5)").getSingleResult();
                 NhanVien nv = NhanVien.builder()
                         .maNv(maNv)
                         .hoTen(request.getHoTen())
@@ -83,7 +83,7 @@ public class AdminUserService {
                 nhanVienRepository.save(nv);
             }
             case "NVDP" -> {
-                String maNv = (String) entityManager.createNativeQuery("SELECT 'NV' || lpad(nextval('seq_nv')::text, 5, '0')").getSingleResult();
+                String maNv = (String) entityManager.createNativeQuery("SELECT 'NV' + RIGHT('00000' + CAST(NEXT VALUE FOR seq_nv AS VARCHAR(10)), 5)").getSingleResult();
                 NhanVien nv = NhanVien.builder()
                         .maNv(maNv)
                         .hoTen(request.getHoTen())
@@ -96,7 +96,7 @@ public class AdminUserService {
                 nhanVienRepository.save(nv);
             }
             case "TAI_XE" -> {
-                String maTx = (String) entityManager.createNativeQuery("SELECT 'TX' || lpad(nextval('seq_tx')::text, 5, '0')").getSingleResult();
+                String maTx = (String) entityManager.createNativeQuery("SELECT 'TX' + RIGHT('00000' + CAST(NEXT VALUE FOR seq_tx AS VARCHAR(10)), 5)").getSingleResult();
                 TaiXe tx = TaiXe.builder()
                         .maTx(maTx)
                         .hoTen(request.getHoTen())
@@ -127,10 +127,11 @@ public class AdminUserService {
 
         // Kiểm tra công việc dở dang trước khi khóa (gọi fn_so_viec_dang_xu_ly)
         if ("Bị khóa".equals(trangThaiMoi)) {
-            Long soViec = (Long) entityManager
-                    .createNativeQuery("SELECT fn_so_viec_dang_xu_ly(:maNd)")
+            Object rawResult = entityManager
+                    .createNativeQuery("SELECT dbo.fn_so_viec_dang_xu_ly(:maNd)")
                     .setParameter("maNd", maNd)
                     .getSingleResult();
+            Long soViec = rawResult instanceof Number num ? num.longValue() : 0L;
 
             if (soViec != null && soViec > 0) {
                 throw new BusinessException(
